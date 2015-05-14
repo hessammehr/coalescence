@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Frequency Coalescence</title>
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+</head>
+<body>
+<svg></svg>
+	<script type="text/javascript">
+		function generate() {
+			function* freq(f1, f2, p, n) {
+				var target = f1, f = f1;
+				while(1) {
+					if (Math.random() < p) {
+						target = f2;
+						f2 = f1;
+						f1 = target;
+					}
+					f += (target - f) / n;
+					yield f;
+				}
+			}
+
+	// p: Exchange probability per unit time.
+	function* gen(f1, f2, p, ts, N) {
+		var f = freq(f1, f2, p * ts, p/ts);
+		var ph = 0, n = 0;
+		while(1) {
+			yield Math.sin(ph);
+			ph += ts*f.next().value;
+			n++;
+			if (N && n > N) break;
+		}
+	}
+
+	var data = [];
+	for (var point of gen(1, 5, 10, 0.02, 2000)) {
+		data.push(point);
+	}
+	return data;
+}
+
+function plot(data) {
+	var margin = {top: 20, right: 25, bottom: 30, left: 50},
+	width = 960 - margin.left - margin.right,
+	height = 370 - margin.top - margin.bottom;
+
+	var colors = d3.scale.category10();
+
+	var t = d3.scale.linear()
+	.range([0, width])
+	.domain([0, data.length]);
+
+	var y = d3.scale.linear()
+	.range([height, 0])
+	.domain([-1, 1]);
+
+
+	var svg = d3.select("svg")
+	.attr("width", width + margin.left + margin.right)
+	.attr("height", height + margin.top + margin.bottom)
+	.append("g")
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var signal = d3.svg.line()
+	.x(function(d,n) { return t(n); })
+	.y(function(d) { return y(d); })
+	.interpolate("basis");
+	svg.append("path")
+	.datum(data)
+	.attr("class", "line")
+	.attr("stroke", colors(1))
+	.attr("d", signal);
+
+	var time = d3.svg.axis()
+	.scale(t)
+	.orient("bottom");
+
+	var y_axis = d3.svg.axis()
+	.scale(y)
+	.orient("left");
+
+	svg.append("g")
+	.attr("class", "x axis")
+	.attr("transform", "translate(0," + height + ")")
+	.call(time);
+
+	svg.append("g")
+	.attr("class", "y axis")
+	.call(y_axis)
+	.append("text")
+	.attr("transform", "rotate(-90)")
+	.attr("y", 6)
+	.attr("dy", ".71em")
+	.style("text-anchor", "end")
+	.text("signal");
+}
+
+setInterval(function() { plot(generate()); }, 200)
+</script>
+</body>
+</html>
+

@@ -1,0 +1,53 @@
+body, svg{
+	font-size: 11px;
+	font-family: Roboto;
+	font-weight: 400;
+	background-color: #fffefd;
+	margin: auto;
+}
+
+svg
+{
+	display: block;
+	margin: 0 auto;
+}
+
+h1 {
+	/*font-family: "Gill Sans MT Pro";*/
+	font-weight: 300;
+	font-size: 24pt;
+	color: #045364;
+}
+
+.caption
+{
+	font-size: 10pt;
+	font-weight: 700;
+	text-align: center;
+	display: block;
+}
+
+h1, p
+{
+	padding-left: 2cm;
+}
+.axis path,
+.marker, .axis line {
+	fill: none;
+	stroke: #000;
+	shape-rendering: crispEdges;
+}
+
+.x.axis path {
+	/*display: none;*/
+}
+
+.line {
+	fill: none;
+	stroke-width: 2px;
+}
+
+.sample path {
+	fill: none;
+	stroke-width: 2px;
+}
