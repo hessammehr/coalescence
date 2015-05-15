@@ -6,98 +6,183 @@
 	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 </head>
 <body>
-<svg></svg>
 	<script type="text/javascript">
-		function generate() {
-			function* freq(f1, f2, p, n) {
-				var target = f1, f = f1;
-				while(1) {
-					if (Math.random() < p) {
-						target = f2;
-						f2 = f1;
-						f1 = target;
-					}
-					f += (target - f) / n;
-					yield f;
+		function* mux(a,b) {
+			var c = a;
+			while(1) {
+				if (yield c) {
+					c=b;
+					b=a;
+					a=c;
 				}
 			}
+		}
+		function* freq(f1, f2, p, n) {
+			var m = mux(f1, f2);
+			while(1) {
+				yield m.next(Math.random() < p ? true : false).value
+			}
+		}
+
+		function* smooth(iter, n) {
+			var x = iter.next().value
+			while (1) {
+				yield x;
+				x += (iter.next().value - x) / n;
+			}
+		}
 
 	// p: Exchange probability per unit time.
-	function* gen(f1, f2, p, ts, N) {
-		var f = freq(f1, f2, p * ts, p/ts);
+	function* gen(f1, f2, p, ts) {
+		var f = smooth(freq(f1, f2, p * ts), 1 / (4 * p * ts));
 		var ph = 0, n = 0;
 		while(1) {
 			yield Math.sin(ph);
 			ph += ts*f.next().value;
 			n++;
-			if (N && n > N) break;
+		}
+	}
+	function take(g, N) {
+		var data = [];
+		for (var point of g) {
+			if (N-- > 0) {
+				data.push(point);
+				continue;
+			} 
+			break;
+		}
+		return data;
+	}
+
+	function* continuous(g, N) {
+		var buff = take(g, N);
+		var x = 0;
+		while(true) {
+			if (x == N) x = 0;
+			buff[x] = g.next().value;
+			yield buff.slice(x + 1, N).concat(buff.slice(0, x + 1));
+			x++;
 		}
 	}
 
-	var data = [];
-	for (var point of gen(1, 5, 10, 0.02, 2000)) {
-		data.push(point);
+	function plot(data, min, max, title) {
+		var margin = {top: 20, right: 25, bottom: 30, left: 50},
+		width = 960 - margin.left - margin.right,
+		height = 370 - margin.top - margin.bottom;
+
+		var colors = d3.scale.category10();
+
+		var t = d3.scale.linear()
+		.range([0, width])
+		.domain([0, data.length]);
+
+		var y = d3.scale.linear()
+		.range([height, 0])
+		.domain([min, max]);
+
+
+		var svg = d3.select("body").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+		var signal = d3.svg.line()
+		.x(function(d,n) { return t(n); })
+		.y(function(d) { return y(d); })
+		.interpolate("basis");
+		svg.append("path")
+		.datum(data)
+		.attr("class", "line")
+		.attr("stroke", colors(1))
+		.attr("d", signal);
+
+		var time = d3.svg.axis()
+		.scale(t)
+		.orient("bottom");
+
+		var y_axis = d3.svg.axis()
+		.scale(y)
+		.orient("left");
+
+		svg.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(time);
+
+		svg.append("g")
+		.attr("class", "y axis")
+		.call(y_axis)
+		.append("text")
+		.attr("transform", "rotate(-90)")
+		.attr("y", 6)
+		.attr("dy", ".71em")
+		.style("text-anchor", "end")
+		.text(title);
 	}
-	return data;
-}
 
-function plot(data) {
-	var margin = {top: 20, right: 25, bottom: 30, left: 50},
-	width = 960 - margin.left - margin.right,
-	height = 370 - margin.top - margin.bottom;
+	function continuousPlot(g, N, min, max, title) {
+		var b = continuous(g, N)
 
-	var colors = d3.scale.category10();
+		var margin = {top: 20, right: 25, bottom: 30, left: 50},
+		width = 480 - margin.left - margin.right,
+		height = 180 - margin.top - margin.bottom;
 
-	var t = d3.scale.linear()
-	.range([0, width])
-	.domain([0, data.length]);
+		var colors = d3.scale.category10();
 
-	var y = d3.scale.linear()
-	.range([height, 0])
-	.domain([-1, 1]);
+		var t = d3.scale.linear()
+		.range([0, width])
+		.domain([0, N]);
+
+		var y = d3.scale.linear()
+		.range([height, 0])
+		.domain([min, max]);
 
 
-	var svg = d3.select("svg")
-	.attr("width", width + margin.left + margin.right)
-	.attr("height", height + margin.top + margin.bottom)
-	.append("g")
-	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+		var svg = d3.select("body").append("svg")
+		.attr("width", width + margin.left + margin.right)
+		.attr("height", height + margin.top + margin.bottom)
+		.append("g")
+		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+		var signal = d3.svg.line()
+		.x(function(d,n) { return t(n); })
+		.y(function(d) { return y(d); })
+		.interpolate("monotone");
+		var p = svg.append("path")
+		.attr("class", "line")
+		.attr("stroke", colors(1))
 
-	var signal = d3.svg.line()
-	.x(function(d,n) { return t(n); })
-	.y(function(d) { return y(d); })
-	.interpolate("basis");
-	svg.append("path")
-	.datum(data)
-	.attr("class", "line")
-	.attr("stroke", colors(1))
-	.attr("d", signal);
+		setInterval( function() {
+		p.datum(b.next().value)
+		.attr("d", signal);
+		}, 10);
 
-	var time = d3.svg.axis()
-	.scale(t)
-	.orient("bottom");
+		var time = d3.svg.axis()
+		.scale(t)
+		.orient("bottom");
 
-	var y_axis = d3.svg.axis()
-	.scale(y)
-	.orient("left");
+		var y_axis = d3.svg.axis()
+		.scale(y)
+		.orient("left");
 
-	svg.append("g")
-	.attr("class", "x axis")
-	.attr("transform", "translate(0," + height + ")")
-	.call(time);
+		svg.append("g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(time);
 
-	svg.append("g")
-	.attr("class", "y axis")
-	.call(y_axis)
-	.append("text")
-	.attr("transform", "rotate(-90)")
-	.attr("y", 6)
-	.attr("dy", ".71em")
-	.style("text-anchor", "end")
-	.text("signal");
-}
+		svg.append("g")
+		.attr("class", "y axis")
+		.call(y_axis)
+		.append("text")
+		.attr("transform", "rotate(-90)")
+		.attr("y", 6)
+		.attr("dy", ".71em")
+		.style("text-anchor", "end")
+		.text(title);
+	}
 
-setInterval(function() { plot(generate()); }, 200)
+	continuousPlot(gen(1, 3, 1, 0.05), 500, -1, 1, "signal");
+	continuousPlot(smooth(freq(1, 3, 0.05), 5), 500, 0.5, 3.5, "freq");
 </script>
 </body>
 </html>
