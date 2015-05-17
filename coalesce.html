@@ -3,12 +3,15 @@
 <head>
 	<title>Frequency Coalescence</title>
 	<link rel="stylesheet" type="text/css" href="style.css">
-	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script src="d3.v3.min.js" charset="utf-8"></script>
+	<script src="fft-asm.js" charset="utf-8"></script>
+	<script src="fft-asm-noasm.js" charset="utf-8"></script>
+	<script src="fft-asm-lib.js" charset="utf-8"></script>
 </head>
 <body>
 	<script type="text/javascript">
 		function* mux(a,b) {
-			var c = a;
+			var c = Math.random() > 0.5 ? a : b;
 			while(1) {
 				if (yield c) {
 					c=b;
@@ -34,21 +37,26 @@
 
 	// p: Exchange probability per unit time.
 	function* gen(f1, f2, p, ts) {
-		var f = smooth(freq(f1, f2, p * ts), 1 / (4 * p * ts));
-		var ph = 0, n = 0;
+		// var f = smooth(freq(f1, f2, p * ts), 1 / (4 * p * ts));
+		var f = freq(f1, f2, p * ts);
+		var ph = 2*Math.PI*Math.random(), n = 0;
 		while(1) {
 			yield Math.sin(ph);
 			ph += ts*f.next().value;
 			n++;
 		}
 	}
-	function take(g, N) {
-		var data = [];
+
+	// take populates array d with data points from generator g
+	// If d is not specified returns a new array.
+	function take(g, N, d) {
+		var data = (d ? d : new Array(N));
+		var n = 0;
 		for (var point of g) {
-			if (N-- > 0) {
-				data.push(point);
+			if (n < N) {
+				data[n++] = point;
 				continue;
-			} 
+			}
 			break;
 		}
 		return data;
@@ -62,6 +70,32 @@
 			buff[x] = g.next().value;
 			yield buff.slice(x + 1, N).concat(buff.slice(0, x + 1));
 			x++;
+		}
+	}
+
+	function* spec(g, N) {
+		var fftasm = new FftModule(N, true);
+
+		for (var real of g) {
+			var imag = new Float64Array(N);
+			fftasm.fftmag(real, imag);
+			yield real;
+		}
+	}
+
+	function* map(g, f) {
+		for (var point of g) {
+			yield f(point);
+		}
+	}
+
+	function* add() {
+		while(true) {
+			var sum = 0;
+			for (var g of arguments) {
+				sum += g.next().value;
+			}
+			yield sum;
 		}
 	}
 
@@ -121,8 +155,8 @@
 		.text(title);
 	}
 
-	function continuousPlot(g, N, min, max, title) {
-		var b = continuous(g, N)
+
+	function monitor(g, N, min, max, title) {
 
 		var margin = {top: 20, right: 25, bottom: 30, left: 50},
 		width = 480 - margin.left - margin.right,
@@ -153,7 +187,7 @@
 		.attr("stroke", colors(1))
 
 		setInterval( function() {
-		p.datum(b.next().value)
+		p.datum(g.next().value)
 		.attr("d", signal);
 		}, 10);
 
@@ -181,9 +215,23 @@
 		.text(title);
 	}
 
-	continuousPlot(gen(1, 3, 1, 0.05), 500, -1, 1, "signal");
-	continuousPlot(smooth(freq(1, 3, 0.05), 5), 500, 0.5, 3.5, "freq");
+
+	// plot(result, -400, 400, "mag");
+	var N = 8192;
+	var spins = [];
+	for (var i = 0; i < 512; i++) {
+		spins.push(gen(1, 1.5, 0.0001, 0.1));
+		spins.push(gen(2.5, 3, 0.001, 0.1));
+		spins.push(gen(4, 4.5, 0.01, 0.1));
+		spins.push(gen(5.5, 6, 0.1, 0.1));
+		spins.push(gen(7, 7.5, 1, 0.1));
+	}
+	// monitor(continuous(gen(5, 10, 1, 0.05), N), N, -1, 1, "signal");
+	// monitor(spec(continuous(gen(1, 20, 1, 0.05), N), N), N, 0, 1, "freq");
+	// monitor(map(continuous(add(...spins), N), function(a) { return a.slice(0, 256); }),
+		// 256, -20, 20, "signal");
+	monitor(map(spec(continuous(add.apply(null, spins), N), N), function(a) { return a.slice(0, 1024); }),
+		1024, 0, 20, "fft (mag)");
 </script>
 </body>
 </html>
-
