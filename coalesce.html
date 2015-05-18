@@ -7,231 +7,30 @@
 	<script src="fft-asm.js" charset="utf-8"></script>
 	<script src="fft-asm-noasm.js" charset="utf-8"></script>
 	<script src="fft-asm-lib.js" charset="utf-8"></script>
+	<script src="gen-utils.js" charset="utf-8"></script>
+	<script src="plot-utils.js" charset="utf-8"></script>
 </head>
 <body>
-	<script type="text/javascript">
-		function* mux(a,b) {
-			var c = Math.random() > 0.5 ? a : b;
-			while(1) {
-				if (yield c) {
-					c=b;
-					b=a;
-					a=c;
-				}
-			}
-		}
-		function* freq(f1, f2, p, n) {
-			var m = mux(f1, f2);
-			while(1) {
-				yield m.next(Math.random() < p ? true : false).value
-			}
-		}
+	<script type="text/javascript" charset="utf-8">
 
-		function* smooth(iter, n) {
-			var x = iter.next().value
-			while (1) {
-				yield x;
-				x += (iter.next().value - x) / n;
-			}
-		}
-
-	// p: Exchange probability per unit time.
-	function* gen(f1, f2, p, ts) {
-		// var f = smooth(freq(f1, f2, p * ts), 1 / (4 * p * ts));
-		var f = freq(f1, f2, p * ts);
-		var ph = 2*Math.PI*Math.random(), n = 0;
-		while(1) {
-			yield Math.sin(ph);
-			ph += ts*f.next().value;
-			n++;
-		}
-	}
-
-	// take populates array d with data points from generator g
-	// If d is not specified returns a new array.
-	function take(g, N, d) {
-		var data = (d ? d : new Array(N));
-		var n = 0;
-		for (var point of g) {
-			if (n < N) {
-				data[n++] = point;
-				continue;
-			}
-			break;
-		}
-		return data;
-	}
-
-	function* continuous(g, N) {
-		var buff = take(g, N);
-		var x = 0;
-		while(true) {
-			if (x == N) x = 0;
-			buff[x] = g.next().value;
-			yield buff.slice(x + 1, N).concat(buff.slice(0, x + 1));
-			x++;
-		}
-	}
-
-	function* spec(g, N) {
-		var fftasm = new FftModule(N, true);
-
-		for (var real of g) {
-			var imag = new Float64Array(N);
-			fftasm.fftmag(real, imag);
-			yield real;
-		}
-	}
-
-	function* map(g, f) {
-		for (var point of g) {
-			yield f(point);
-		}
-	}
-
-	function* add() {
-		while(true) {
-			var sum = 0;
-			for (var g of arguments) {
-				sum += g.next().value;
-			}
-			yield sum;
-		}
-	}
-
-	function plot(data, min, max, title) {
-		var margin = {top: 20, right: 25, bottom: 30, left: 50},
-		width = 960 - margin.left - margin.right,
-		height = 370 - margin.top - margin.bottom;
-
-		var colors = d3.scale.category10();
-
-		var t = d3.scale.linear()
-		.range([0, width])
-		.domain([0, data.length]);
-
-		var y = d3.scale.linear()
-		.range([height, 0])
-		.domain([min, max]);
-
-
-		var svg = d3.select("body").append("svg")
-		.attr("width", width + margin.left + margin.right)
-		.attr("height", height + margin.top + margin.bottom)
-		.append("g")
-		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-		var signal = d3.svg.line()
-		.x(function(d,n) { return t(n); })
-		.y(function(d) { return y(d); })
-		.interpolate("basis");
-		svg.append("path")
-		.datum(data)
-		.attr("class", "line")
-		.attr("stroke", colors(1))
-		.attr("d", signal);
-
-		var time = d3.svg.axis()
-		.scale(t)
-		.orient("bottom");
-
-		var y_axis = d3.svg.axis()
-		.scale(y)
-		.orient("left");
-
-		svg.append("g")
-		.attr("class", "x axis")
-		.attr("transform", "translate(0," + height + ")")
-		.call(time);
-
-		svg.append("g")
-		.attr("class", "y axis")
-		.call(y_axis)
-		.append("text")
-		.attr("transform", "rotate(-90)")
-		.attr("y", 6)
-		.attr("dy", ".71em")
-		.style("text-anchor", "end")
-		.text(title);
-	}
-
-
-	function monitor(g, N, min, max, title) {
-
-		var margin = {top: 20, right: 25, bottom: 30, left: 50},
-		width = 480 - margin.left - margin.right,
-		height = 180 - margin.top - margin.bottom;
-
-		var colors = d3.scale.category10();
-
-		var t = d3.scale.linear()
-		.range([0, width])
-		.domain([0, N]);
-
-		var y = d3.scale.linear()
-		.range([height, 0])
-		.domain([min, max]);
-
-
-		var svg = d3.select("body").append("svg")
-		.attr("width", width + margin.left + margin.right)
-		.attr("height", height + margin.top + margin.bottom)
-		.append("g")
-		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-		var signal = d3.svg.line()
-		.x(function(d,n) { return t(n); })
-		.y(function(d) { return y(d); })
-		.interpolate("monotone");
-		var p = svg.append("path")
-		.attr("class", "line")
-		.attr("stroke", colors(1))
-
-		setInterval( function() {
-		p.datum(g.next().value)
-		.attr("d", signal);
-		}, 10);
-
-		var time = d3.svg.axis()
-		.scale(t)
-		.orient("bottom");
-
-		var y_axis = d3.svg.axis()
-		.scale(y)
-		.orient("left");
-
-		svg.append("g")
-		.attr("class", "x axis")
-		.attr("transform", "translate(0," + height + ")")
-		.call(time);
-
-		svg.append("g")
-		.attr("class", "y axis")
-		.call(y_axis)
-		.append("text")
-		.attr("transform", "rotate(-90)")
-		.attr("y", 6)
-		.attr("dy", ".71em")
-		.style("text-anchor", "end")
-		.text(title);
-	}
 
 
 	// plot(result, -400, 400, "mag");
-	var N = 8192;
+	const N = 16384;
 	var spins = [];
-	for (var i = 0; i < 512; i++) {
-		spins.push(gen(1, 1.5, 0.0001, 0.1));
-		spins.push(gen(2.5, 3, 0.001, 0.1));
-		spins.push(gen(4, 4.5, 0.01, 0.1));
-		spins.push(gen(5.5, 6, 0.1, 0.1));
-		spins.push(gen(7, 7.5, 1, 0.1));
+	for (var i = 0; i < 256; i++) {
+		spins.push(gen(1, 3, 0.0001, 0.005));
+		spins.push(gen(6, 8, 0.001, 0.005));
+		spins.push(gen(11, 13, 0.01, 0.005));
+		spins.push(gen(16, 18, 0.1, 0.005));
+		spins.push(gen(21, 23, 1, 0.005));
 	}
-	// monitor(continuous(gen(5, 10, 1, 0.05), N), N, -1, 1, "signal");
-	// monitor(spec(continuous(gen(1, 20, 1, 0.05), N), N), N, 0, 1, "freq");
-	// monitor(map(continuous(add(...spins), N), function(a) { return a.slice(0, 256); }),
-		// 256, -20, 20, "signal");
-	monitor(map(spec(continuous(add.apply(null, spins), N), N), function(a) { return a.slice(0, 1024); }),
-		1024, 0, 20, "fft (mag)");
+
+	var a = axes("n", "fft_mag", true);
+	var g = map(spec(continuous(add.apply(null, spins), N), N), function(a) { return a.slice(0, N/32); });
+	// var g = map(continuous(add.apply(null, spins), N), function(a) { return a.slice(0, N/2); });
+	console.log("Done");
+	monitor(g, a, 30);
 </script>
 </body>
 </html>
