@@ -1,33 +1,50 @@
-function* mux(a,b) {
+function* mux(a, b) {
   var c = Math.random() > 0.5 ? a : b;
   while(true) {
     if (yield c) c = (c==a) ? b : a;
   }
 }
-function* freq(f1, f2, p, n) {
-  var m = mux(f1, f2);
-  while(1) {
-    yield m.next(Math.random() < p ? true : false).value
+
+function* pswitch(p) {
+  while(true) {
+    yield (Math.random() < p.next().value) ? true : false;
   }
 }
 
-function* smooth(iter, n) {
-  var x = iter.next().value
+function* pmux(a, b, p) {
+  var s = pswitch(p), m = mux(a, b);
+  while (true) {
+    yield m.next(s.next().value).value;
+  }
+}
+
+function* constg(x) {
+  var y;
+  while (true) {
+    if (y = yield(x)) x = y;
+  }
+}
+
+function* smooth(g, n) {
+  var x = g.next().value
   while (1) {
     yield x;
-    x += (iter.next().value - x) / n;
+    x += (g.next().value - x) / n;
+  }
+}
+
+function* cum(f, ts, initial) {
+  var c = initial ? initial : 0.0;
+  while(true) {
+    c += f.next().value * ts;
+    yield c;
   }
 }
 
 // p: Exchange probability per unit time.
-function* gen(f1, f2, p, ts) {
-  var f = smooth(freq(f1, f2, p * ts), 1 / (4 * p * ts));
-  // var f = freq(f1, f2, p * ts);
-  var ph = 2*Math.PI*Math.random(), n = 0;
-  while(1) {
-    yield Math.sin(ph);
-    ph += ts*f.next().value;
-    n++;
+function* osc(phase) {
+  while(true) {
+    yield Math.sin(phase.next().value);
   }
 }
 
@@ -38,21 +55,8 @@ function take(g, N, d) {
   for (var n = 0; n < N; n++) {
     data[n] = g.next().value;
   }
-  // while(n++ < N) {
-  //
-  // }
-  // for (var point of g) {
-  //   if (n < N) {
-  //     data[n++] = point;
-  //     continue;
-  //   }
-  //   break;
-  // }
-  return data;
-}
 
-function* repeat(val) {
-  while(true) yield val;
+  return data;
 }
 
 function* continuous(g, N, preload) {
@@ -63,6 +67,22 @@ function* continuous(g, N, preload) {
     buff[x] = g.next().value;
     yield buff.slice(x + 1, N).concat(buff.slice(0, x + 1));
     x++;
+  }
+}
+
+function* every(g, N) {
+  var res;
+  while (true) {
+    for (var x = 0; x < N; x++)
+      res = g.next();
+    yield res.value;
+  }
+}
+
+function* pad(g, c, N) {
+  var m = take(constg(c), N);
+  while(true) {
+    yield g.next().value.concat(m);
   }
 }
 
@@ -82,10 +102,12 @@ function* map(g, f) {
   }
 }
 
-function* add() {
+// add takes an iterable of generators and returns a
+// the point-by-point sum of their values as a generator
+function* add(gs) {
   while(true) {
     var sum = 0;
-    for (var g of arguments) {
+    for (var g of gs) {
       sum += g.next().value;
     }
     yield sum;
