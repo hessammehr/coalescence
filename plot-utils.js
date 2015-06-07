@@ -53,7 +53,7 @@ function* axes(xtitle, ytitle, changeLimits) {
     x_node.call(x_axis);
     y_node.call(y_axis);
 
-    p.datum(g.next().value)
+    p.datum(data)
     .attr("d", l);
   }
 }
