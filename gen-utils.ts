@@ -1,31 +1,33 @@
-function* mux(a, b) {
+import FftModule from "./fft-asm-lib"
+
+export function* mux(a, b) {
   var c = Math.random() > 0.5 ? a : b;
   while(true) {
     if (yield c) c = (c==a) ? b : a;
   }
 }
 
-function* pswitch(p) {
+export function* pswitch(p) {
   while(true) {
     yield (Math.random() < p.next().value) ? true : false;
   }
 }
 
-function* pmux(a, b, p) {
+export function* pmux(a, b, p) {
   var s = pswitch(p), m = mux(a, b);
   while (true) {
     yield m.next(s.next().value).value;
   }
 }
 
-function* constg(x) {
+export function* constg(x) {
   var y;
   while (true) {
     if (y = yield(x)) x = y;
   }
 }
 
-function* smooth(g, n) {
+export function* smooth(g, n) {
   var x = g.next().value
   while (1) {
     yield x;
@@ -33,7 +35,7 @@ function* smooth(g, n) {
   }
 }
 
-function* cum(f, ts, initial) {
+export function* cum(f, ts, initial) {
   var c = initial ? initial : 0.0;
   while(true) {
     c += f.next().value * ts;
@@ -42,7 +44,7 @@ function* cum(f, ts, initial) {
 }
 
 // p: Exchange probability per unit time.
-function* osc(phase) {
+export function* osc(phase) {
   while(true) {
     yield Math.sin(phase.next().value);
   }
@@ -50,7 +52,7 @@ function* osc(phase) {
 
 // take populates array d with data points from generator g
 // If d is not specified returns a new array.
-function take(g, N, d) {
+export function take(g, N, d?) {
   var data = (d ? d : new Array(N));
   for (var n = 0; n < N; n++) {
     data[n] = g.next().value;
@@ -59,7 +61,11 @@ function take(g, N, d) {
   return data;
 }
 
-function* continuous(g, N, preload) {
+export function* repeat(c) {
+  while (true) yield c;
+}
+
+export function* continuous(g, N, preload) {
   var buff = take(preload ? g : repeat(0), N);
   var x = 0;
   while(true) {
@@ -70,7 +76,7 @@ function* continuous(g, N, preload) {
   }
 }
 
-function* every(g, N) {
+export function* every(g, N) {
   var res;
   while (true) {
     for (var x = 0; x < N; x++)
@@ -79,14 +85,14 @@ function* every(g, N) {
   }
 }
 
-function* pad(g, c, N) {
+export function* pad(g, c, N:number) {
   var m = take(constg(c), N);
   while(true) {
     yield g.next().value.concat(m);
   }
 }
 
-function* spec(g, N) {
+export function* spec(g, N) {
   var fftasm = new FftModule(N, true);
 
   for (var real of g) {
@@ -96,7 +102,7 @@ function* spec(g, N) {
   }
 }
 
-function* map(g, f) {
+export function* map(g, f) {
   for (var point of g) {
     yield f(point);
   }
@@ -104,7 +110,7 @@ function* map(g, f) {
 
 // add takes an iterable of generators and returns a
 // the point-by-point sum of their values as a generator
-function* add(gs) {
+export function* add(gs) {
   while(true) {
     var sum = 0;
     for (var g of gs) {
