@@ -35,7 +35,7 @@ export function* axes(xtitle, ytitle, changeLimits) {
 
   let l = d3.line()
     .x(function (d, n) { return x(n) })
-    .y(function (d) { return y(d[1]) });
+    .y(function (d) { return y(d) });
   let p = svg.append("path")
     .attr("class", "line")
     .attr("stroke", colors("1"));
