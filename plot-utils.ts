@@ -1,3 +1,5 @@
+import d3 from "d3";
+
 function* axes(xtitle, ytitle, changeLimits) {
 
   var margin = {top: 20, right: 25, bottom: 30, left: 50},
