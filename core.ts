@@ -19,6 +19,9 @@ function update(newp) {
 let a = axes("n", "fft_mag", true);
 let g = map(spec(pad(every(continuous(add(spins), N, true), 16), 0.0, 7 * N), 8 * N),
     function (a) { return a.slice(0, N / 4); });
+
+let slider = (document.getElementById("slider") as HTMLInputElement);
+slider.onchange = function(e) { update(slider.value) };
 // let g = map(continuous(add.apply(null, spins), N), function(a) { return a.slice(0, N/2); });
 console.log("Done");
 monitor(g, a, 30);
