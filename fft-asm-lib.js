@@ -1,8 +1,8 @@
-import FftModuleAsm from "./fft-asm"
-import FftModuleNoAsm from "./fft-asm-noasm"
+import FftModuleAsm from "./fft-asm.js"
+import FftModuleNoAsm from "./fft-asm-noasm.js"
 
 export default function FftModule(sz,asm) {
-	var i,j,k:number;
+	var i,j,k;
 	this.sz=sz;
 	this.bufsz=sz*32;
 	if(this.bufsz<4096)

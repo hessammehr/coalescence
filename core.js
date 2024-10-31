@@ -1,5 +1,5 @@
-import { axes, monitor } from "./plot-utils"
-import { map, spec, pad, every, continuous, add, constg, osc, cum, pmux } from "./gen-utils"
+import { axes, monitor } from "./plot-utils.js"
+import { map, spec, pad, every, continuous, add, constg, osc, cum, pmux } from "./gen-utils.js"
 
 let N = 2048;
 let spins = [];
@@ -20,7 +20,7 @@ let a = axes("n", "fft_mag", true);
 let g = map(spec(pad(every(continuous(add(spins), N, true), 16), 0.0, 7 * N), 8 * N),
     function (a) { return a.slice(0, N / 4); });
 
-let slider = (document.getElementById("slider") as HTMLInputElement);
+let slider = (document.getElementById("slider"));
 slider.onchange = function(e) { update(slider.value) };
 // let g = map(continuous(add.apply(null, spins), N), function(a) { return a.slice(0, N/2); });
 console.log("Done");

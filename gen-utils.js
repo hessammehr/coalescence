@@ -1,4 +1,4 @@
-import FftModule from "./fft-asm-lib"
+import FftModule from "./fft-asm-lib.js"
 
 export function* mux(a, b) {
   var c = Math.random() > 0.5 ? a : b;
@@ -52,7 +52,7 @@ export function* osc(phase) {
 
 // take populates array d with data points from generator g
 // If d is not specified returns a new array.
-export function take(g, N, d?) {
+export function take(g, N, d) {
   var data = (d ? d : new Array(N));
   for (var n = 0; n < N; n++) {
     data[n] = g.next().value;
@@ -85,7 +85,7 @@ export function* every(g, N) {
   }
 }
 
-export function* pad(g, c, N:number) {
+export function* pad(g, c, N) {
   var m = take(constg(c), N);
   while(true) {
     yield g.next().value.concat(m);

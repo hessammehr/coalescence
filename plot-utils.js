@@ -1,4 +1,4 @@
-import * as d3 from "d3";
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 export function* axes(xtitle, ytitle, changeLimits) {
 
@@ -35,7 +35,7 @@ export function* axes(xtitle, ytitle, changeLimits) {
 
   let l = d3.line()
     .x(function (d, n) { return x(n) })
-    .y(function (d) { return y(d) });
+    .y(function (d, n) { return y(d) });
   let p = svg.append("path")
     .attr("class", "line")
     .attr("stroke", colors("1"));
