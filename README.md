@@ -10,25 +10,11 @@ Fast exchange (f<sub>exchange</sub> ≫ | f<sub>X-H</sub> – f<sub>Y-H</sub> |)
 
 ![slow exchange spectrum](fast.png)
 
-# Try it out!
-Intall node.js, then
+# Modifying the simulation
 
 ```bash
-npm install -g typescript
-git clone https://github.com/hessammehr/coalescence
-cd coalescence
 npm install
-tsc -w
-```
-
-You will need to fire up a local dev server
-```bash
-# Python 3
-python -m http.server
-# Python 2
-python -m SimpleHTTPServer
-# something a bit faster?
-caddy -host localhost -port 8000
+npm run dev # or npm run build
 ```
 
 Then go to `http://localhost:8000`.
